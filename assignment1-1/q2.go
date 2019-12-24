@@ -1,9 +1,11 @@
 package cos418_hw1_1
 
 import (
+    "fmt"
 	"bufio"
 	"io"
 	"strconv"
+    "os"
 )
 
 // Sum numbers from channel `nums` and output sum to `out`.
@@ -12,6 +14,12 @@ import (
 func sumWorker(nums chan int, out chan int) {
 	// TODO: implement me
 	// HINT: use for loop over `nums`
+    sum := 0
+    for num := range nums {
+        //fmt.Printf("num : %d\n", num)
+        sum += num
+    }
+    out <- sum
 }
 
 // Read integers from the file `fileName` and return sum of all values.
@@ -23,7 +31,34 @@ func sum(num int, fileName string) int {
 	// TODO: implement me
 	// HINT: use `readInts` and `sumWorkers`
 	// HINT: used buffered channels for splitting numbers between workers
-	return 0
+    fmt.Printf("num : %d fileName : %s\n", num, fileName)
+    file , err := os.Open(fileName)
+    if err != nil {
+        panic("could not open file") // Right to panic her ? 
+    }
+    elems, err := readInts(file)
+    if err != nil {
+        panic("failed reading int's")
+    }
+    // Create the need channels
+    nums := make(chan int)
+    out  := make(chan int)
+    // Create gorutines
+    for i := 0 ; i < num ; i++ {
+        go sumWorker(nums, out)
+    }
+    // Send the data, one element at a time..
+    for _, e := range elems {
+        nums <- e
+    }
+    close(nums) // signals end of data
+    // Sum the remote computed sums
+    sum := 0
+    for i := 0; i < num; i++ {
+        sum  += <-out
+    }
+
+	return sum
 }
 
 // Read a list of integers separated by whitespace from `r`.
@@ -39,6 +74,7 @@ func readInts(r io.Reader) ([]int, error) {
 		if err != nil {
 			return elems, err
 		}
+        //fmt.Printf("val : %d\n", val)
 		elems = append(elems, val)
 	}
 	return elems, nil
